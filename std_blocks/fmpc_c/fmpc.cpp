@@ -26,12 +26,12 @@ using namespace std;
 using namespace std;
 using namespace MOL;
 //#define FMPC_HW
-
+#ifdef FMPC_HW
 #define XFmpc_WriteReg(BaseAddress, RegOffset, Data) \
     *(volatile u32*)((BaseAddress) + (RegOffset)) = (u32)(Data)
 #define XFmpc_ReadReg(BaseAddress, RegOffset) \
     *(volatile u32*)((BaseAddress) + (RegOffset))
-
+#endif
 
 
 typedef union{
@@ -40,7 +40,7 @@ typedef union{
 } float_union;
 
 void youbot_fmpc(struct fmpc_info* inf, struct kdl_frame *fmpc_odom_frame, struct kdl_twist *fmpc_odom_twist, struct kdl_twist *cmd_twist, int32_t *cmd_vel);
-
+#ifdef FMPC_HW
 void Set_Value(XFmpc_solver_top *InstancePtr,u32 BaseAddress,int size,float *data){
         int i=0;
         float_union temp;
@@ -58,7 +58,7 @@ void Get_Value(XFmpc_solver_top *InstancePtr,u32 BaseAddress,int size,float *dat
                 *(data+i) = temp.f;
         }
 }
-
+#endif
 #define PRINT_VAR
 #define MAX_A_VAL 0.4
 #define MAX_A_VAL2 0.4
@@ -230,7 +230,9 @@ static int fmpc_init(ubx_block_t *c)
         return -1;
         }
         inf->p = (int *)mmap(0, 65536, PROT_READ|PROT_WRITE, MAP_SHARED, inf->fd, 0x43c00000);
+#ifdef FMPC_HW
         fmpc.Axi4lites_BaseAddress=(unsigned int)inf->p;
+#endif
 	LoadMatrixFromFile(A_m, "/tmp/data_fmpc/A.txt");
 	LoadMatrixFromFile(B_m, "/tmp/data_fmpc/B.txt");
 	LoadMatrixFromFile(Q_m, "/tmp/data_fmpc/Q.txt");
