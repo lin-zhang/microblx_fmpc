@@ -210,6 +210,7 @@ def_write_arr_fun(write_int4, int32_t,4);
 def_write_fun(write_kdl_twist, struct kdl_twist)
 def_write_arr_fun(write_char256, char, 256);
 def_read_arr_fun(read_float3, float, 3);
+def_write_arr_fun(write_float2, float, 2);
 
 static int fmpc_init(ubx_block_t *c)
 {
@@ -319,6 +320,7 @@ static void fmpc_step(ubx_block_t *c) {
         struct youbot_base_motorinfo ymi;
 	char data_buf[256];
 	float obstacle[3];
+	float robot_pose[2];
 
 	/* get ports */
 	ubx_port_t* p_cmd_vel = ubx_port_get(c, "cmd_vel");
@@ -327,6 +329,7 @@ static void fmpc_step(ubx_block_t *c) {
 	ubx_port_t* p_youbot_info = ubx_port_get(c, "youbot_info_port");
 	
 	ubx_port_t* p_obstacle_info = ubx_port_get(c, "fmpc_obstacle");        
+	ubx_port_t* p_fmpc_robot_pose = ubx_port_get(c, "fmpc_robot_pose");        
 	
 	/* read new motorinfo */
         read_motorinfo(p_motorinfo, & ymi);
@@ -353,7 +356,11 @@ static void fmpc_step(ubx_block_t *c) {
         && read_kdl_twist(fmpc_twist_port, &fmpc_twist)==1){
         	youbot_fmpc(inf, &fmpc_odom_frame, &fmpc_twist, &cmd_twist, cmd_vel);
         }
+	
+	robot_pose[0]=fmpc_odom_frame.p.x+inf->init_x[0];
+	robot_pose[1]=fmpc_odom_frame.p.y+inf->init_x[1];
 
+	write_float2(p_fmpc_robot_pose, &robot_pose);
 	
 	/* write out new velocity */
 	write_int4(p_cmd_vel, &cmd_vel);
