@@ -283,7 +283,7 @@ static int fmpc_init(ubx_block_t *c)
 	inf->niter=fmpc_conf->param_iteration;
 	
 
-	fmpc_solver_top_assign_variables(&fmpc, (char)0, A_a,B_a,inf->xmax_a,inf->xmin_a,inf->umax_a,inf->umin_a,Q_a,R_a,Qf_a,inf->kappa,inf->niter,inf->X_a,inf->U_a,inf->x_a);
+//	fmpc_solver_top_assign_variables(&fmpc, (char)0, A_a,B_a,inf->xmax_a,inf->xmin_a,inf->umax_a,inf->umin_a,Q_a,R_a,Qf_a,inf->kappa,inf->niter,inf->X_a,inf->U_a,inf->x_a);
 
 //	cout << "fmpc_init: hi from " << c->name << endl;
 	return 0;
