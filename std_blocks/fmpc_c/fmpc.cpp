@@ -151,6 +151,7 @@ ubx_port_t fmpc_ports[] = {
         { .name="fmpc_odom_port", .in_type_name="struct kdl_frame" },
         { .name="fmpc_twist_port", .in_type_name="struct kdl_twist" },
 	{ .name="youbot_info_port", .out_type_name="char", .out_data_len=256},
+	{ .name="obstacle_port", .in_type_name="float", .in_data_len=4},
 	{ NULL },
 };
 
@@ -205,6 +206,7 @@ def_read_fun(read_kdl_twist, struct kdl_twist)
 def_write_arr_fun(write_int4, int32_t,4);
 def_write_fun(write_kdl_twist, struct kdl_twist)
 def_write_arr_fun(write_char256, char, 256);
+def_read_arr_fun(read_float4, float, 4);
 
 static int fmpc_init(ubx_block_t *c)
 {
@@ -305,19 +307,24 @@ static int fmpc_start(ubx_block_t *c)
 
 static void fmpc_step(ubx_block_t *c) {
 	int32_t cmd_vel[4];
+	int ret;
 	struct fmpc_info* inf = (struct fmpc_info*) c->private_data;
 	struct kdl_frame fmpc_odom_frame;
 	struct kdl_twist fmpc_twist;
 	struct kdl_twist cmd_twist;
         struct youbot_base_motorinfo ymi;
 	char data_buf[256];
+	float obstacle[4];
 
 	/* get ports */
 	ubx_port_t* p_cmd_vel = ubx_port_get(c, "cmd_vel");
         ubx_port_t* p_cmd_twist = ubx_port_get(c, "cmd_twist");
         ubx_port_t* p_motorinfo = ubx_port_get(c, "motor_info");
 	ubx_port_t* p_youbot_info = ubx_port_get(c, "youbot_info_port");
-        /* read new motorinfo */
+	
+	ubx_port_t* p_obstacle_info = ubx_port_get(c, "obstacle_port");        
+	
+	/* read new motorinfo */
         read_motorinfo(p_motorinfo, & ymi);
 
         /* do something here */
@@ -330,6 +337,14 @@ static void fmpc_step(ubx_block_t *c) {
               read_kdl_twist(fmpc_twist_port, &fmpc_twist), 
                       read_kdl_frame(fmpc_odom_port, &fmpc_odom_frame));
 	*/
+
+	ret = read_float4(p_obstacle_info, &obstacle);
+	
+	if(ret>0){
+		for(int i=0;i<4;i++)
+			inf->obstacle[i]=obstacle[i];
+	}	
+
         if(read_kdl_frame(fmpc_odom_port, &fmpc_odom_frame)==1
         && read_kdl_twist(fmpc_twist_port, &fmpc_twist)==1){
         	youbot_fmpc(inf, &fmpc_odom_frame, &fmpc_twist, &cmd_twist, cmd_vel);
