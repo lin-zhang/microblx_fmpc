@@ -224,13 +224,13 @@ static int fmpc_init(ubx_block_t *c)
 	
 
 
+#ifdef FMPC_HW
         inf->fd=open("/dev/mem", O_RDWR);
         if(inf->fd == -1) {
         printf("Err: cannot open /dev/mem\n");
         return -1;
         }
         inf->p = (int *)mmap(0, 65536, PROT_READ|PROT_WRITE, MAP_SHARED, inf->fd, 0x43c00000);
-#ifdef FMPC_HW
         fmpc.Axi4lites_BaseAddress=(unsigned int)inf->p;
 #endif
 	LoadMatrixFromFile(A_m, "/tmp/data_fmpc/A.txt");
@@ -283,7 +283,9 @@ static int fmpc_init(ubx_block_t *c)
 	inf->niter=fmpc_conf->param_iteration;
 	
 
-//	fmpc_solver_top_assign_variables(&fmpc, (char)0, A_a,B_a,inf->xmax_a,inf->xmin_a,inf->umax_a,inf->umin_a,Q_a,R_a,Qf_a,inf->kappa,inf->niter,inf->X_a,inf->U_a,inf->x_a);
+#ifdef FMPC_HW
+	fmpc_solver_top_assign_variables(&fmpc, (char)0, A_a,B_a,inf->xmax_a,inf->xmin_a,inf->umax_a,inf->umin_a,Q_a,R_a,Qf_a,inf->kappa,inf->niter,inf->X_a,inf->U_a,inf->x_a);
+#endif
 
 //	cout << "fmpc_init: hi from " << c->name << endl;
 	return 0;
