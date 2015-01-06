@@ -211,6 +211,7 @@ def_write_fun(write_kdl_twist, struct kdl_twist)
 def_write_arr_fun(write_char256, char, 256);
 def_read_arr_fun(read_float3, float, 3);
 def_write_arr_fun(write_float2, float, 2);
+def_read_arr_fun(read_float2, float, 2);
 
 static int fmpc_init(ubx_block_t *c)
 {
@@ -321,7 +322,7 @@ static void fmpc_step(ubx_block_t *c) {
 	char data_buf[256];
 	float obstacle[3];
 	float robot_pose[2];
-
+	float goal_pose[2];
 	/* get ports */
 	ubx_port_t* p_cmd_vel = ubx_port_get(c, "cmd_vel");
         ubx_port_t* p_cmd_twist = ubx_port_get(c, "cmd_twist");
@@ -330,6 +331,7 @@ static void fmpc_step(ubx_block_t *c) {
 	
 	ubx_port_t* p_obstacle_info = ubx_port_get(c, "fmpc_obstacle");        
 	ubx_port_t* p_fmpc_robot_pose = ubx_port_get(c, "fmpc_robot_pose");        
+	ubx_port_t* p_fmpc_goal_pose = ubx_port_get(c, "fmpc_goal_pose");
 	
 	/* read new motorinfo */
         read_motorinfo(p_motorinfo, & ymi);
@@ -346,11 +348,12 @@ static void fmpc_step(ubx_block_t *c) {
 	*/
 
 	ret = read_float3(p_obstacle_info, &obstacle);
-	
 	if(ret>0){
 		for(int i=0;i<3;i++)
 			inf->obstacle[i]=obstacle[i];
-	}	
+	}
+	
+	read_float2(p_fmpc_goal_pose, &goal_pose);	
 
         if(read_kdl_frame(fmpc_odom_port, &fmpc_odom_frame)==1
         && read_kdl_twist(fmpc_twist_port, &fmpc_twist)==1){
