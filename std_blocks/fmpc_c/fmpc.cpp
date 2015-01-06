@@ -272,7 +272,7 @@ static int fmpc_init(ubx_block_t *c)
 	inf->x_a[i]=fmpc_conf->param_states_init[i];
 	inf->init_x[i]=fmpc_conf->param_states_init[i];
 	}
-	for( int i=0;i<3;i++)
+	for(int i=0;i<3;i++)
 		inf->obstacle[i]=fmpc_conf->param_obstacle[i];
 	for(int i=0;i<FMPC_GT;i++){
 		for(int j=0;j<FMPC_GN;j++){
