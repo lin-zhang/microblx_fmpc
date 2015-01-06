@@ -175,9 +175,10 @@ struct fmpc_info{
 	float obstacle[3];	
         type_f kappa;
         int niter;
-	type_f init_x[FMPC_GN];
+	//type_f init_x[FMPC_GN];
 	type_f Xmax_const[FMPC_GN];
 	type_f Xmin_const[FMPC_GN];
+	float goal_pose[2];
 };
 
 	XFmpc_solver_top fmpc;
@@ -270,7 +271,7 @@ static int fmpc_init(ubx_block_t *c)
 	inf->Xmax_const[i]=fmpc_conf->param_states_max[i];
 	inf->Xmin_const[i]=fmpc_conf->param_states_min[i];
 	inf->x_a[i]=fmpc_conf->param_states_init[i];
-	inf->init_x[i]=fmpc_conf->param_states_init[i];
+	//inf->init_x[i]=fmpc_conf->param_states_init[i];
 	}
 	for(int i=0;i<3;i++)
 		inf->obstacle[i]=fmpc_conf->param_obstacle[i];
@@ -289,7 +290,8 @@ static int fmpc_init(ubx_block_t *c)
 
 	inf->kappa=fmpc_conf->param_kappa;
 	inf->niter=fmpc_conf->param_iteration;
-	
+	inf->goal_pose[0]=0;
+	inf->goal_pose[1]=0;
 
 #ifdef FMPC_HW
 	fmpc_solver_top_assign_variables(&fmpc, (char)0, A_a,B_a,inf->xmax_a,inf->xmin_a,inf->umax_a,inf->umin_a,Q_a,R_a,Qf_a,inf->kappa,inf->niter,inf->X_a,inf->U_a,inf->x_a);
@@ -315,7 +317,7 @@ static void fmpc_step(ubx_block_t *c) {
 	int32_t cmd_vel[4];
 	int ret;
 	struct fmpc_info* inf = (struct fmpc_info*) c->private_data;
-	struct kdl_frame fmpc_odom_frame;
+	struct kdl_frame fmpc_odom_frame, fmpc_odom_frame_local;
 	struct kdl_twist fmpc_twist;
 	struct kdl_twist cmd_twist;
         struct youbot_base_motorinfo ymi;
@@ -347,21 +349,29 @@ static void fmpc_step(ubx_block_t *c) {
                       read_kdl_frame(fmpc_odom_port, &fmpc_odom_frame));
 	*/
 
+	read_float2(p_fmpc_goal_pose, &goal_pose);	
+	inf->goal_pose[0]=goal_pose[0];
+	inf->goal_pose[1]=goal_pose[1];
 	ret = read_float3(p_obstacle_info, &obstacle);
 	if(ret>0){
-		for(int i=0;i<3;i++)
-			inf->obstacle[i]=obstacle[i];
+		inf->obstacle[0]=obstacle[0]-goal_pose[0];
+		inf->obstacle[1]=obstacle[1]-goal_pose[1];
 	}
 	
-	read_float2(p_fmpc_goal_pose, &goal_pose);	
 
-        if(read_kdl_frame(fmpc_odom_port, &fmpc_odom_frame)==1
+        if(read_kdl_frame(fmpc_odom_port, &fmpc_odom_frame)==1 && read_kdl_frame(fmpc_odom_port, &fmpc_odom_frame_local)==1
         && read_kdl_twist(fmpc_twist_port, &fmpc_twist)==1){
-        	youbot_fmpc(inf, &fmpc_odom_frame, &fmpc_twist, &cmd_twist, cmd_vel);
+		fmpc_odom_frame_local.p.x = fmpc_odom_frame.p.x - goal_pose[0];
+		fmpc_odom_frame_local.p.y = fmpc_odom_frame.p.y - goal_pose[1];
+
+        	youbot_fmpc(inf, &fmpc_odom_frame_local, &fmpc_twist, &cmd_twist, cmd_vel);
         }
 	
-	robot_pose[0]=fmpc_odom_frame.p.x+inf->init_x[0];
-	robot_pose[1]=fmpc_odom_frame.p.y+inf->init_x[1];
+	//robot_pose[0]=fmpc_odom_frame.p.x+inf->init_x[0];
+	//robot_pose[1]=fmpc_odom_frame.p.y+inf->init_x[1];
+
+	robot_pose[0]=fmpc_odom_frame.p.x;
+	robot_pose[1]=fmpc_odom_frame.p.y;
 
 	write_float2(p_fmpc_robot_pose, &robot_pose);
 	
@@ -374,8 +384,8 @@ static void fmpc_step(ubx_block_t *c) {
 		%8.3f, %8.3f, %8.3f, %8.3f, %8.3f, %8.3f,\
 		%8.3f, %8.3f, %8.3f, %8.3f, %8.3f, %8.3f,\
 		%8.3f,%8.3f\n", 
-		fmpc_odom_frame.p.x+inf->init_x[0], 
-		fmpc_odom_frame.p.y+inf->init_x[1], 
+		fmpc_odom_frame.p.x,//+inf->init_x[0], 
+		fmpc_odom_frame.p.y,//+inf->init_x[1], 
 		fmpc_odom_frame.p.z, 
 		fmpc_twist.vel.x, 
 		fmpc_twist.vel.y,
@@ -448,8 +458,8 @@ void youbot_fmpc(struct fmpc_info* inf, struct kdl_frame *fmpc_odom_frame, struc
         Get_Value(&fmpc,XFMPC_SOLVER_TOP_AXI4LITES_ADDR_X_AO_0_DATA+32,FMPC_GN,inf->x_a);
 #else
 */
-        inf->x_a[0]=fmpc_odom_frame->p.x+inf->init_x[0];//-X_POS_OFFSET;
-        inf->x_a[1]=fmpc_odom_frame->p.y+inf->init_x[1];
+        inf->x_a[0]=fmpc_odom_frame->p.x;//+inf->init_x[0];//-X_POS_OFFSET;
+        inf->x_a[1]=fmpc_odom_frame->p.y;//+inf->init_x[1];
         inf->x_a[2]=fmpc_odom_twist->vel.x;
         inf->x_a[3]=fmpc_odom_twist->vel.y;
 #ifdef PRINT_VAR
