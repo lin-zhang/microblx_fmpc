@@ -151,7 +151,10 @@ ubx_port_t fmpc_ports[] = {
         { .name="fmpc_odom_port", .in_type_name="struct kdl_frame" },
         { .name="fmpc_twist_port", .in_type_name="struct kdl_twist" },
 	{ .name="youbot_info_port", .out_type_name="char", .out_data_len=256},
-	{ .name="obstacle_port", .in_type_name="float", .in_data_len=4},
+	{ .name="fmpc_virtual_fence", .in_type_name="float", .in_data_len=4},
+	{ .name="fmpc_obstacle", .in_type_name="float", .in_data_len=3},
+	{ .name="fmpc_goal_pose", .in_type_name="float", .in_data_len=2},
+	{ .name="fmpc_robot_pose", .out_type_name="float", .out_data_len=2},
 	{ NULL },
 };
 
@@ -169,7 +172,7 @@ struct fmpc_info{
         float x_a[FMPC_GN];
         float U_array_a[FMPC_GM];
 	type_f temp_x_a[FMPC_GN];
-	float obstacle[4];	
+	float obstacle[3];	
         type_f kappa;
         int niter;
 	type_f init_x[FMPC_GN];
@@ -206,7 +209,7 @@ def_read_fun(read_kdl_twist, struct kdl_twist)
 def_write_arr_fun(write_int4, int32_t,4);
 def_write_fun(write_kdl_twist, struct kdl_twist)
 def_write_arr_fun(write_char256, char, 256);
-def_read_arr_fun(read_float4, float, 4);
+def_read_arr_fun(read_float3, float, 3);
 
 static int fmpc_init(ubx_block_t *c)
 {
@@ -266,8 +269,9 @@ static int fmpc_init(ubx_block_t *c)
 	inf->Xmin_const[i]=fmpc_conf->param_states_min[i];
 	inf->x_a[i]=fmpc_conf->param_states_init[i];
 	inf->init_x[i]=fmpc_conf->param_states_init[i];
-	inf->obstacle[i]=fmpc_conf->param_obstacle[i];
 	}
+	for( int i=0;i<3;i++)
+		inf->obstacle[i]=fmpc_conf->param_obstacle[i];
 	for(int i=0;i<FMPC_GT;i++){
 		for(int j=0;j<FMPC_GN;j++){
 			inf->xmax_a[i*FMPC_GN+j]=param_states_max_arr[j];
@@ -314,7 +318,7 @@ static void fmpc_step(ubx_block_t *c) {
 	struct kdl_twist cmd_twist;
         struct youbot_base_motorinfo ymi;
 	char data_buf[256];
-	float obstacle[4];
+	float obstacle[3];
 
 	/* get ports */
 	ubx_port_t* p_cmd_vel = ubx_port_get(c, "cmd_vel");
@@ -322,7 +326,7 @@ static void fmpc_step(ubx_block_t *c) {
         ubx_port_t* p_motorinfo = ubx_port_get(c, "motor_info");
 	ubx_port_t* p_youbot_info = ubx_port_get(c, "youbot_info_port");
 	
-	ubx_port_t* p_obstacle_info = ubx_port_get(c, "obstacle_port");        
+	ubx_port_t* p_obstacle_info = ubx_port_get(c, "fmpc_obstacle");        
 	
 	/* read new motorinfo */
         read_motorinfo(p_motorinfo, & ymi);
@@ -338,10 +342,10 @@ static void fmpc_step(ubx_block_t *c) {
                       read_kdl_frame(fmpc_odom_port, &fmpc_odom_frame));
 	*/
 
-	ret = read_float4(p_obstacle_info, &obstacle);
+	ret = read_float3(p_obstacle_info, &obstacle);
 	
 	if(ret>0){
-		for(int i=0;i<4;i++)
+		for(int i=0;i<3;i++)
 			inf->obstacle[i]=obstacle[i];
 	}	
 
@@ -492,7 +496,7 @@ k=0;
 	float factor=1.0;
 	//int flag=1;
         for(j=0;j<FMPC_GT-1;j++){
-                if((inf->X_a[j*FMPC_GN]-inf->obstacle[0])*(inf->X_a[j*FMPC_GN]-inf->obstacle[0])+(inf->X_a[j*FMPC_GN+1]-inf->obstacle[1])*(inf->X_a[j*FMPC_GN+1]-inf->obstacle[1])<inf->obstacle[3]){
+                if((inf->X_a[j*FMPC_GN]-inf->obstacle[0])*(inf->X_a[j*FMPC_GN]-inf->obstacle[0])+(inf->X_a[j*FMPC_GN+1]-inf->obstacle[1])*(inf->X_a[j*FMPC_GN+1]-inf->obstacle[1])<inf->obstacle[2]*inf->obstacle[2]){
                 	
 			float s0=0.0;
 			s0=cal_passover_side(inf->X_a[j*FMPC_GN],inf->X_a[j*FMPC_GN+1],0,0,inf->obstacle[0],inf->obstacle[1]);
@@ -502,22 +506,22 @@ k=0;
 			if(s0>0){
 				//factor=1.0;
 				//flag=0;
-			inf->xmax_a[j*4+1]=-sqrt(inf->obstacle[3]-(inf->X_a[j*FMPC_GN]-inf->obstacle[0])*(inf->X_a[j*FMPC_GN]-inf->obstacle[0]))+inf->obstacle[1]*factor;
-			inf->xmax_a[j*4]=-sqrt(inf->obstacle[3]-(inf->X_a[j*FMPC_GN+1]-inf->obstacle[1])*(inf->X_a[j*FMPC_GN+1]-inf->obstacle[1]))+inf->obstacle[0]*(-factor);
+			inf->xmax_a[j*4+1]=-sqrt(inf->obstacle[2]*inf->obstacle[2]-(inf->X_a[j*FMPC_GN]-inf->obstacle[0])*(inf->X_a[j*FMPC_GN]-inf->obstacle[0]))+inf->obstacle[1]*factor;
+			inf->xmax_a[j*4]=-sqrt(inf->obstacle[2]*inf->obstacle[2]-(inf->X_a[j*FMPC_GN+1]-inf->obstacle[1])*(inf->X_a[j*FMPC_GN+1]-inf->obstacle[1]))+inf->obstacle[0]*(-factor);
 			//inf->xmax_a[j*4+1]=inf->xmin_a[j*4+1];
 			//printf("above? inf->xmax_a[x,y]=%f,%f\n", inf->xmax_a[j*4], inf->xmax_a[j*4+1]);
 			}
 			else{
 				//factor=1.0;        
 				//flag=1;
-			inf->xmin_a[j*4+1]=sqrt(inf->obstacle[3]-(inf->X_a[j*FMPC_GN]-inf->obstacle[0])*(inf->X_a[j*FMPC_GN]-inf->obstacle[0]))+inf->obstacle[1]*factor;
-			inf->xmin_a[j*4]=sqrt(inf->obstacle[3]-(inf->X_a[j*FMPC_GN+1]-inf->obstacle[1])*(inf->X_a[j*FMPC_GN+1]-inf->obstacle[1]))+inf->obstacle[0]*(-factor);
+			inf->xmin_a[j*4+1]=sqrt(inf->obstacle[2]*inf->obstacle[2]-(inf->X_a[j*FMPC_GN]-inf->obstacle[0])*(inf->X_a[j*FMPC_GN]-inf->obstacle[0]))+inf->obstacle[1]*factor;
+			inf->xmin_a[j*4]=sqrt(inf->obstacle[2]*inf->obstacle[2]-(inf->X_a[j*FMPC_GN+1]-inf->obstacle[1])*(inf->X_a[j*FMPC_GN+1]-inf->obstacle[1]))+inf->obstacle[0]*(-factor);
                         //inf->xmin_a[j*4+1]=inf->xmax_a[j*4+1];
 			//printf("underneath? inf->xmin_a(x,y)=%f,%f\n", inf->xmin_a[j*4],inf->xmin_a[j*4+1]);
 			inf->xmin_a[j*4]=inf->Xmin_const[0];
 			}		
 		
-			//inf->xmin_a[j*4+1]=sqrt(inf->obstacle[3]-(inf->X_a[j*FMPC_GN]-inf->obstacle[0])*(inf->X_a[j*FMPC_GN]-inf->obstacle[0]))+inf->obstacle[1];
+			//inf->xmin_a[j*4+1]=sqrt(inf->obstacle[2]*inf->obstacle[2]-(inf->X_a[j*FMPC_GN]-inf->obstacle[0])*(inf->X_a[j*FMPC_GN]-inf->obstacle[0]))+inf->obstacle[1];
 		printf("yes!!\n");
                 }
                 else{

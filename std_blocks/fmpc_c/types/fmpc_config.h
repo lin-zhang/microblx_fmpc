@@ -8,5 +8,5 @@ struct fmpc_config {
         float param_inputs_max[4];
         float param_inputs_min[4];
         float param_inputs_init[4];
-        float param_obstacle[4];
+        float param_obstacle[3];
 };

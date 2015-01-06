@@ -45,8 +45,8 @@ param_states_init={-5,0,0,0},
 param_inputs_max={3.9195,3.9195,3.9195,3.9195},
 param_inputs_min={-3.9195,-3.9195,-3.9195,-3.9195},
 param_inputs_init={0,0,0,0},
---param_obstacle: (Px, Py, r, r^2)
-param_obstacle={-3.5,0.1,0.5,0.25}
+--param_obstacle: (Px, Py, r)
+param_obstacle={-3.5,0.1,0.5}
 }})
 
 print("creating instance of 'lfds_buffers/cyclic'")
