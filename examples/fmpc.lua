@@ -397,11 +397,18 @@ function fmpc_run(dur_in)
    ubx.port_write(p_fmpc_cmd_twist, base_null_twist_data)
 end
 
+goal_arr_data=ubx.data_alloc(ni, "float", 2)
+obs_arr_data=ubx.data_alloc(ni, "float", 3)
+
+
 function fmpc_move(dur_in, goal_arr, obs_arr)
    base_set_control_mode(2) -- VELOCITY
 
-   ubx.port_write(p_fmpc_obstacle, obs_arr)
-   ubx.port_write(p_fmpc_goal_pose, goal_arr)
+   ubx.data_set(goal_arr_data, goal_arr)
+   ubx.data_set(obs_arr_data, obs_arr)
+
+   ubx.port_write(p_fmpc_obstacle, obs_arr_data)
+   ubx.port_write(p_fmpc_goal_pose, goal_arr_data)
    --ubx.block_stop(ptrig1);
    --ubx.data_set(twist_data, fifo_out_youbot_msr_twist_to_fmpc)
    local dur = {sec=0, nsec=0}
