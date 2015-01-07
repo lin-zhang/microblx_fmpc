@@ -98,6 +98,13 @@ ubx.ports_map(youbot1,
 		 yb_pinv[pname] = ubx.port_clone_conn(youbot1, pname)
 	      end)
 
+local fmpc_pinv={}
+ubx.ports_map(fmpc1,
+              function(p)
+                 local pname = ubx.safe_tostr(p.name)
+                 fmpc_pinv[pname] = ubx.port_clone_conn(fmpc1, pname)
+              end)
+
 
 __time=ffi.new("struct ubx_timespec")
 function gettime()
@@ -407,8 +414,8 @@ function fmpc_move(dur_in, goal_arr, obs_arr)
    ubx.data_set(goal_arr_data, goal_arr)
    ubx.data_set(obs_arr_data, obs_arr)
 
-   ubx.port_write(p_fmpc_obstacle, obs_arr_data)
-   ubx.port_write(p_fmpc_goal_pose, goal_arr_data)
+   ubx.port_write(fmpc_pinv.p_fmpc_obstacle, obs_arr_data)
+   ubx.port_write(fmpc_pinv.p_fmpc_goal_pose, goal_arr_data)
    --ubx.block_stop(ptrig1);
    --ubx.data_set(twist_data, fifo_out_youbot_msr_twist_to_fmpc)
    local dur = {sec=0, nsec=0}
