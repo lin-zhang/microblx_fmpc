@@ -358,6 +358,8 @@ static void fmpc_step(ubx_block_t *c) {
 		inf->obstacle[1]=obstacle[1]-goal_pose[1];
 	}
 	
+	printf("goal_pose: %f, %f\n", goal_pose[0], goal_pose[1]);
+	printf("obs_pose: %f, %f, %f\n", obstacle[0], obstacle[1],obstacle[2]);
 
         if(read_kdl_frame(fmpc_odom_port, &fmpc_odom_frame)==1 && read_kdl_frame(fmpc_odom_port, &fmpc_odom_frame_local)==1
         && read_kdl_twist(fmpc_twist_port, &fmpc_twist)==1){
