@@ -414,8 +414,8 @@ function fmpc_move(dur_in, goal_arr, obs_arr)
    ubx.data_set(goal_arr_data, goal_arr)
    ubx.data_set(obs_arr_data, obs_arr)
 
-   ubx.port_write(fmpc_pinv.p_fmpc_obstacle, obs_arr_data)
-   ubx.port_write(fmpc_pinv.p_fmpc_goal_pose, goal_arr_data)
+   ubx.port_write(fmpc_pinv.fmpc_obstacle, obs_arr_data)
+   ubx.port_write(fmpc_pinv.fmpc_goal_pose, goal_arr_data)
    --ubx.block_stop(ptrig1);
    --ubx.data_set(twist_data, fifo_out_youbot_msr_twist_to_fmpc)
    local dur = {sec=0, nsec=0}
