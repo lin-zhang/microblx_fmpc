@@ -360,8 +360,8 @@ static void fmpc_step(ubx_block_t *c) {
 	
 	printf("goal_pose: %f, %f\n", goal_pose[0], goal_pose[1]);
 	printf("obs_pose: %f, %f, %f\n", obstacle[0], obstacle[1],obstacle[2]);
-
-        if(read_kdl_frame(fmpc_odom_port, &fmpc_odom_frame)==1 && read_kdl_frame(fmpc_odom_port, &fmpc_odom_frame_local)==1
+        
+	if(read_kdl_frame(fmpc_odom_port, &fmpc_odom_frame)==1 && read_kdl_frame(fmpc_odom_port, &fmpc_odom_frame_local)==1
         && read_kdl_twist(fmpc_twist_port, &fmpc_twist)==1){
 		fmpc_odom_frame_local.p.x = fmpc_odom_frame.p.x - goal_pose[0];
 		fmpc_odom_frame_local.p.y = fmpc_odom_frame.p.y - goal_pose[1];
@@ -375,6 +375,7 @@ static void fmpc_step(ubx_block_t *c) {
 	robot_pose[0]=fmpc_odom_frame.p.x;
 	robot_pose[1]=fmpc_odom_frame.p.y;
 
+	printf("robot_pose: %f, %f\n", robot_pose[0], robot_pose[1]);
 	write_float2(p_fmpc_robot_pose, &robot_pose);
 	
 	/* write out new velocity */
