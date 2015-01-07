@@ -256,7 +256,7 @@ void fmpc_solver(	Matrix<type_f,FMPC_GN,FMPC_GN>& A, 		Matrix<type_f,FMPC_GN,FMP
     		(type_f)0.0,
     		bb,0,0,1,FMPC_GN);
     z=z0;
-    printf("\n iteration \t step \t\t rd \t\t\t rp\n");
+    //printf("\n iteration \t step \t\t rd \t\t\t rp\n");
 
 	for(iiter=0; iiter<maxiter; iiter++){
 		gfgphp(Q,R,Qf,zmax,zmin,z,gf,gp,hp);
@@ -304,7 +304,7 @@ void fmpc_solver(	Matrix<type_f,FMPC_GN,FMPC_GN>& A, 		Matrix<type_f,FMPC_GN,FMP
 		}
 			nu=newnu;
 			z=newz;
-        printf("    %d \t\t %5.4f \t %0.5e \t\t %0.5e\n",iiter,(float)s,(float)newresd,(float)newresp);
+        //printf("    %d \t\t %5.4f \t %0.5e \t\t %0.5e\n",iiter,(float)s,(float)newresd,(float)newresp);
 	}
 
     z0=z;
