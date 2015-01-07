@@ -355,6 +355,10 @@ p_youbot_msr_twist=ubx.port_get(youbot1, 'base_msr_twist');
 
 p_fmpc_msr_odom=ubx.port_get(fmpc1, 'youbot_info_port');
 
+p_fmpc_obstacle=ubx.port_get(fmpc1, 'fmpc_obstacle');
+p_fmpc_goal_pose=ubx.port_get(fmpc1, 'fmpc_goal_pose');
+p_fmpc_virtual_fence=ubx.port_get(fmpc1, 'fmpc_virtual_fence');
+
 ubx.port_connect_out(p_fmpc_cmd_twist, fifo1);
 ubx.port_connect_in(p_youbot_twist_input, fifo1);
 
@@ -369,6 +373,35 @@ ubx.port_connect_in(p_fmpc_twist_input,fifo3);
 -- @param dur: time in seconds to run the controller
 function fmpc_run(dur_in)
    base_set_control_mode(2) -- VELOCITY
+   --ubx.block_stop(ptrig1);
+   --ubx.data_set(twist_data, fifo_out_youbot_msr_twist_to_fmpc)
+   local dur = {sec=0, nsec=0}
+   dur.sec,dur.nsec=math.modf(dur_in)
+   dur.nsec = dur.nsec * 1000000000
+        print(dur.sec, dur.nsec)
+   local ts_start=gettime()
+   local ts_cur=gettime()
+   local diff = {sec=0,nsec=0}
+   ubx.block_start(ptrig2)
+   ubx.block_start(ptrig3)
+   while true do
+      ubx.cblock_step(file_log1)
+      diff.sec,diff.nsec=time.sub(ts_cur, ts_start)
+      if time.cmp(diff, dur)==1 then break end
+      --ubx.port_write(p_cmd_twist, cmd_twist)          
+      --assert(ubx.cblock_step(fmpc1)==0);      
+      ts_cur=gettime()
+   end
+   ubx.block_stop(ptrig2)
+   ubx.block_stop(ptrig3)
+   ubx.port_write(p_fmpc_cmd_twist, base_null_twist_data)
+end
+
+function fmpc_move(dur_in, goal_arr, obs_arr)
+   base_set_control_mode(2) -- VELOCITY
+
+   ubx.port_write(p_fmpc_obstacle, obs_arr)
+   ubx.port_write(p_fmpc_goal_pose, goal_arr)
    --ubx.block_stop(ptrig1);
    --ubx.data_set(twist_data, fifo_out_youbot_msr_twist_to_fmpc)
    local dur = {sec=0, nsec=0}
