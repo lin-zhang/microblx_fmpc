@@ -40,8 +40,15 @@ mux_pattern="F5",
 --mux_pattern="C3F5I4D4S2F1I2D2S4C3",
 }})
 
+print("creating instance of 'pat_mux/pat_mux'")
+pat_mux2=ubx.block_create(ni, "pat_mux/pat_mux", "pat_mux2", {pat_mux_config={
+mux_type=0,
+mux_pattern="F2",
+--mux_pattern="C3F5I4D4S2F1I2D2S4C3",
+}})
+
 print("creating instance of 'udp_client/udp_client'")
-udp_client1=ubx.block_create(ni, "udp_client/udp_client", "udp_client1", {udp_client_config={host_ip='localhost', port=51068}})
+udp_client1=ubx.block_create(ni, "udp_client/udp_client", "udp_client1", {udp_client_config={host_ip='localhost', port=62000}})
 
 print("creating instance of 'udp_server/udp_server'")
 udp_server1=ubx.block_create(ni, "udp_server/udp_server", "udp_server1", {udp_server_config={port=51068}})
@@ -62,6 +69,7 @@ print("creating instance of 'std_triggers/ptrig'")
 ptrig4=ubx.block_create(ni, "std_triggers/ptrig", "ptrig4",
 			{ period={sec=0, usec=100000 }, sched_policy="SCHED_FIFO", sched_priority=80,
 			  trig_blocks={ { b=pat_mux1, num_steps=1, measure=0 },
+					{ b=pat_mux2, num_steps=1, measure=0 },
 					{ b=udp_server1, num_steps=1, measure=0},
 					{ b=udp_client1, num_steps=1, measure=0} } } )
 
@@ -92,6 +100,9 @@ fifo4=ubx.block_create(ni, "lfds_buffers/cyclic", "fifo4", {element_num=4, eleme
 
 print("creating instance of 'lfds_buffers/cyclic'")
 fifo6=ubx.block_create(ni, "lfds_buffers/cyclic", "fifo6", {element_num=4, element_size=512})
+
+print("creating instance of 'lfds_buffers/cyclic'")
+fifo7=ubx.block_create(ni, "lfds_buffers/cyclic", "fifo7", {element_num=4, element_size=512})
 
 print("creating instance of 'logging/file_logger'")
 
@@ -387,11 +398,10 @@ p_udp_server_data_out=ubx.port_get(udp_server1, "data_out");
 ubx.port_connect_in(p_pat_mux_in_port, fifo5);
 ubx.port_connect_out(p_udp_server_data_out, fifo5);
 
-
---p_pat_mux_out_port=ubx.port_get(pat_mux1, "out_port");
---p_udp_client_data_in=ubx.port_get(udp_client1, "data_in");
---ubx.port_connect_out(p_pat_mux_out_port, fifo5);
---ubx.port_connect_in(p_udp_client_data_in, fifo5);
+p_pat_mux_out_port=ubx.port_get(pat_mux2, "out_port");
+p_udp_client_data_in=ubx.port_get(udp_client1, "data_in");
+ubx.port_connect_out(p_pat_mux_out_port, fifo7);
+ubx.port_connect_in(p_udp_client_data_in, fifo7);
 
 p_fmpc_cmd_vel=ubx.port_get(fmpc1, "cmd_vel")
 p_fmpc_cmd_twist=ubx.port_get(fmpc1, "cmd_twist")
@@ -411,6 +421,11 @@ p_fmpc_virtual_fence=ubx.port_get(fmpc1, 'fmpc_virtual_fence');
 
 p_fmpc_wm_info_in=ubx.port_get(fmpc1, 'fmpc_wm_info_in');
 p_pat_mux_out_float=ubx.port_get(pat_mux1, "out_float");
+
+p_fmpc_robot_pose=ubx.port_get(fmpc1, 'fmpc_robot_pose');
+p_pat_mux_in_float = ubx.port_get(pat_mux2, "in_float");
+ubx.port_connect_in(p_pat_mux_in_float, fifo7);
+ubx.port_connect_out(p_fmpc_robot_pose, fifo7);
 
 ubx.port_connect_in(p_fmpc_wm_info_in, fifo6);
 ubx.port_connect_out(p_pat_mux_out_float, fifo6);
@@ -494,6 +509,7 @@ ubx.block_init(fifo5);
 assert(ubx.block_init(webif1)==0)
 assert(ubx.block_init(ptrig4)==0)
 assert(ubx.block_init(pat_mux1)==0)
+assert(ubx.block_init(pat_mux2)==0)
 assert(ubx.block_init(udp_client1)==0)
 assert(ubx.block_init(udp_server1)==0)
 
@@ -503,6 +519,7 @@ ubx.block_init(fifo2);
 ubx.block_init(fifo3);
 ubx.block_init(fifo4);
 ubx.block_init(fifo6);
+ubx.block_init(fifo7);
 assert(ubx.block_init(ptrig1))
 assert(ubx.block_init(ptrig2))
 assert(ubx.block_init(ptrig3))
@@ -515,6 +532,7 @@ nr_arms=ubx.data_tolua(ubx.config_get_data(youbot1, "nr_arms"))
 
 ubx.block_start(fifo5);
 assert(ubx.block_start(pat_mux1)==0)
+assert(ubx.block_start(pat_mux2)==0)
 assert(ubx.block_start(ptrig4)==0)
 assert(ubx.block_start(udp_client1)==0)
 assert(ubx.block_start(udp_server1)==0)
@@ -523,6 +541,7 @@ ubx.block_start(fifo2);
 ubx.block_start(fifo3);
 ubx.block_start(fifo4);
 ubx.block_start(fifo6);
+ubx.block_start(fifo7);
 assert(ubx.block_start(webif1)==0)
 assert(ubx.block_start(file_log1)==0)
 assert(ubx.block_start(fmpc1)==0)
