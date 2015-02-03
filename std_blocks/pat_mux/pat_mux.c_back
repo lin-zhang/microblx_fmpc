@@ -1,0 +1,245 @@
+/*
+ * A fblock that generates pat_mux numbers.
+ *
+ * This is to be a well (over) documented block to serve as a good
+ * example.
+ */
+
+/* #define DEBUG 1 */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <limits.h>
+
+#include "ubx.h"
+
+
+/* declare and initialize a microblx type. This will be registered /
+ * deregistered in the module init / cleanup at the end of this
+ * file.
+ *
+ * Include regular header file and it's char array representation
+ * (used for luajit reflection, logging, etc.)
+ */
+#include "types/pat_mux_config.h"
+#include "types/pat_mux_config.h.hexarr"
+
+/* declare the type and give the char array type representation as the type private_data */
+ubx_type_t pat_mux_config_type = def_struct_type(struct pat_mux_config, &pat_mux_config_h);
+
+/* function block meta-data
+ * used by higher level functions.
+ */
+char rnd_meta[] =
+	"{ doc='A pat_mux number generator function block',"
+	"  license='LGPL',"
+	"  real-time=true,"
+	"}";
+
+/* configuration
+ * upon cloning the following happens:
+ *   - value.type is resolved
+ *   - value.data will point to a buffer of size value.len*value.type->size
+ *
+ * if an array is required, then .value = { .len=<LENGTH> } can be used.
+ */
+ubx_config_t rnd_config[] = {
+	{ .name="pat_mux_config", .type_name = "struct pat_mux_config" },
+	{ NULL },
+};
+
+/* Ports
+ */
+ubx_port_t rnd_ports[] = {
+	{ .name="in_port",	.in_type_name="char",		.in_data_len=512 },
+	{ .name="in_char", 	.in_type_name="char", 		.in_data_len=64 },
+	{ .name="in_short", 	.in_type_name="short", 		.in_data_len=64 },
+	{ .name="in_int", 	.in_type_name="int", 		.in_data_len=64 },
+	{ .name="in_long", 	.in_type_name="long", 		.in_data_len=64 },
+	{ .name="in_float", 	.in_type_name="float", 		.in_data_len=64 },
+	{ .name="in_double", 	.in_type_name="double", 	.in_data_len=64 },
+
+	{ .name="out_port",	.out_type_name="char",		.out_data_len=512 },
+	{ .name="out_char", 	.out_type_name="char", 		.out_data_len=64 },
+	{ .name="out_short", 	.out_type_name="short", 	.out_data_len=64 },
+	{ .name="out_int", 	.out_type_name="int", 		.out_data_len=64 },
+	{ .name="out_long", 	.out_type_name="long", 		.out_data_len=64 },
+	{ .name="out_float", 	.out_type_name="float", 	.out_data_len=64 },
+	{ .name="out_double", 	.out_type_name="double", 	.out_data_len=64 },
+	{ NULL },
+
+        { .name="seed", .in_type_name="unsigned int" },
+        { .name="rnd", .out_type_name="unsigned int" },
+
+
+};
+
+/* block local info
+ *
+ * This struct holds the information needed by the hook functions
+ * below.
+ */
+struct pat_mux_info {
+	char mux_type;
+	char *mux_pattern;
+	int min;
+	int max;
+};
+
+/* convenience functions to read/write from the ports these fill a
+ * ubx_data_t, and call port->[read|write](&data). These introduce
+ * some type safety.
+ */
+def_read_fun(read_uint, unsigned int)
+def_write_fun(write_uint, unsigned int)
+
+/**
+ * rnd_init - block init function.
+ *
+ * for RT blocks: any memory should be allocated here.
+ *
+ * @param b
+ *
+ * @return Ok if 0,
+ */
+static int rnd_init(ubx_block_t *b)
+{
+	int ret=0;
+
+	DBG(" ");
+	if ((b->private_data = calloc(1, sizeof(struct pat_mux_info)))==NULL) {
+		ERR("Failed to alloc memory");
+		ret=EOUTOFMEM;
+		goto out;
+	}
+ out:
+	return ret;
+}
+
+/**
+ * rnd_cleanup - cleanup block.
+ *
+ * for RT blocks: free all memory here
+ *
+ * @param b
+ */
+static void rnd_cleanup(ubx_block_t *b)
+{
+	DBG(" ");
+	free(b->private_data);
+}
+
+/**
+ * rnd_start - start the pat_mux block.
+ *
+ * @param b
+ *
+ * @return 0 if Ok, if non-zero block will not be started.
+ */
+static int rnd_start(ubx_block_t *b)
+{
+	DBG("in");
+	uint32_t seed, ret;
+	unsigned int clen;
+	struct pat_mux_config* pat_mux_conf;
+	struct pat_mux_info* inf;
+
+	inf=(struct pat_mux_info*) b->private_data;
+
+	/* get and store min_max_config */
+	pat_mux_conf = (struct pat_mux_config*) ubx_config_get_data_ptr(b, "pat_mux_config", &clen);
+	inf->min = pat_mux_conf->min;
+	inf->max = (pat_mux_conf->max == 0) ? INT_MAX : pat_mux_conf->max;
+	inf->mux_type=pat_mux_conf->mux_type;
+	inf->mux_pattern=pat_mux_conf->mux_pattern;
+	switch(inf->mux_type){
+		case 0:	
+		/*Mux: bundle input types to string*/
+		break;
+		case 1:
+		/*De-Mux: unbundle inputs from string to different types*/
+		break;
+	}
+	
+	/* seed is allowed to change at runtime, check if new one available */
+	ubx_port_t* seed_port = ubx_port_get(b, "seed");
+	ret = read_uint(seed_port, &seed);
+
+	if(ret>0) {
+		DBG("starting component. Using seed: %d, min: %d, max: %d", seed, inf->min, inf->max);
+		srandom(seed);
+	} else {
+		DBG("starting component. Using min: %d, max: %d", inf->min, inf->max);
+	}
+	return 0; /* Ok */
+}
+
+/**
+ * rnd_step - this function implements the main functionality of the
+ * block. Ports are read and written here.
+ *
+ * @param b
+ */
+static void rnd_step(ubx_block_t *b) {
+	unsigned int rand_val;
+	struct pat_mux_info* inf;
+
+	inf=(struct pat_mux_info*) b->private_data;
+
+	ubx_port_t* rand_port = ubx_port_get(b, "rnd");
+	rand_val = random();
+	rand_val = (rand_val > inf->max) ? (rand_val%inf->max) : rand_val;
+	rand_val = (rand_val < inf->min) ? ((inf->min + rand_val)%inf->max) : rand_val;
+
+	write_uint(rand_port, &rand_val);
+}
+
+
+/* put everything together
+ *
+ */
+ubx_block_t pat_mux_comp = {
+	.name = "pat_mux/pat_mux",
+	.type = BLOCK_TYPE_COMPUTATION,
+	.meta_data = rnd_meta,
+	.configs = rnd_config,
+	.ports = rnd_ports,
+
+	/* ops */
+	.init = rnd_init,
+	.start = rnd_start,
+	.step = rnd_step,
+	.cleanup = rnd_cleanup,
+};
+
+/**
+ * rnd_module_init - initialize module
+ *
+ * here types and blocks are registered.
+ *
+ * @param ni
+ *
+ * @return 0 if OK, non-zero otherwise (this will prevent the loading of the module).
+ */
+static int rnd_module_init(ubx_node_info_t* ni)
+{
+	ubx_type_register(ni, &pat_mux_config_type);
+	return ubx_block_register(ni, &pat_mux_comp);
+}
+
+/**
+ * rnd_module_cleanup - de
+ *
+ * unregister blocks.
+ *
+ * @param ni
+ */
+static void rnd_module_cleanup(ubx_node_info_t *ni)
+{
+	ubx_type_unregister(ni, "struct pat_mux_config");
+	ubx_block_unregister(ni, "pat_mux/pat_mux");
+}
+
+/* declare the module init and cleanup function */
+UBX_MODULE_INIT(rnd_module_init)
+UBX_MODULE_CLEANUP(rnd_module_cleanup)
