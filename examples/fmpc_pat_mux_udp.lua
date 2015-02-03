@@ -22,6 +22,9 @@ ubx.load_module(ni, "std_blocks/pat_mux/pat_mux.so")
 ubx.load_module(ni, "std_blocks/lfds_buffers/lfds_cyclic.so")
 ubx.load_module(ni, "std_blocks/udp_client/udp_client.so")
 ubx.load_module(ni, "std_blocks/youbot_driver/youbot_driver.so")
+ubx.load_module(ni, "std_blocks/logging/file_logger.so")
+
+ubx.load_module(ni, "std_blocks/fmpc_c/fmpc.so")
 
 
 
@@ -474,11 +477,6 @@ assert(ubx.block_init(ptrig4)==0)
 assert(ubx.block_init(pat_mux1)==0)
 assert(ubx.block_init(udp_client1)==0)
 
-ubx.block_start(fifo5);
-assert(ubx.block_start(webif1)==0)
-assert(ubx.block_start(pat_mux1)==0)
-assert(ubx.block_start(ptrig4)==0)
-assert(ubx.block_start(udp_client1)==0)
 
 -- start and init webif and youbot
 ubx.block_init(fifo1);
@@ -495,6 +493,10 @@ assert(ubx.block_init(youbot1)==0)
 
 nr_arms=ubx.data_tolua(ubx.config_get_data(youbot1, "nr_arms"))
 
+ubx.block_start(fifo5);
+assert(ubx.block_start(pat_mux1)==0)
+assert(ubx.block_start(ptrig4)==0)
+--assert(ubx.block_start(udp_client1)==0)
 ubx.block_start(fifo1);
 ubx.block_start(fifo2);
 ubx.block_start(fifo3);

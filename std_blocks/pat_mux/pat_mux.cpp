@@ -64,7 +64,8 @@ ubx_port_t pat_mux_ports[] = {
         { .name="in_long",      .in_type_name="long",           .in_data_len=MAX_LEN_TYPE_DATA },
         { .name="in_float",     .in_type_name="float",          .in_data_len=MAX_LEN_TYPE_DATA },
         { .name="in_double",    .in_type_name="double",         .in_data_len=MAX_LEN_TYPE_DATA },
-
+	{ .name="in_total_bytes",	.in_type_name="int"},
+	
         { .name="out_port",     .out_type_name="char",          .out_data_len=MAX_LEN_DATA },
         { .name="out_char",     .out_type_name="char",          .out_data_len=MAX_LEN_TYPE_DATA },
         { .name="out_short",    .out_type_name="short",         .out_data_len=MAX_LEN_TYPE_DATA },
@@ -72,6 +73,7 @@ ubx_port_t pat_mux_ports[] = {
         { .name="out_long",     .out_type_name="long",          .out_data_len=MAX_LEN_TYPE_DATA },
         { .name="out_float",    .out_type_name="float",         .out_data_len=MAX_LEN_TYPE_DATA },
         { .name="out_double",   .out_type_name="double",        .out_data_len=MAX_LEN_TYPE_DATA },
+	{ .name="out_total_bytes",	.out_type_name="int"},
         { NULL },
 };
 
@@ -90,7 +92,8 @@ struct pat_mux_info {
 	int	in_int[MAX_LEN_TYPE_DATA];
 	long	in_long[MAX_LEN_TYPE_DATA];
 	float	in_float[MAX_LEN_TYPE_DATA];
-	double in_double[MAX_LEN_TYPE_DATA];
+	double 	in_double[MAX_LEN_TYPE_DATA];
+	int 	in_total_bytes;
 
 	char 	out_bytes[MAX_LEN_DATA];
 	char  	out_char[MAX_LEN_TYPE_DATA];
@@ -99,12 +102,13 @@ struct pat_mux_info {
 	long	out_long[MAX_LEN_TYPE_DATA];
 	float	out_float[MAX_LEN_TYPE_DATA];
 	double	out_double[MAX_LEN_TYPE_DATA];
-	
+	int 	out_total_bytes;
+
 	char 	typeArr[N_TYPES];
 	int	typeLen[N_TYPES];
 };
 
-
+def_read_fun(read_total_bytes, int)
 def_read_arr_fun(read_in_bytes, 	char, 		MAX_LEN_DATA)
 def_read_arr_fun(read_in_char, 		char, 		MAX_LEN_TYPE_DATA)
 def_read_arr_fun(read_in_short, 	short, 		MAX_LEN_TYPE_DATA)
@@ -113,6 +117,7 @@ def_read_arr_fun(read_in_long, 		long, 		MAX_LEN_TYPE_DATA)
 def_read_arr_fun(read_in_float, 	float, 		MAX_LEN_TYPE_DATA)
 def_read_arr_fun(read_in_double, 	double, 	MAX_LEN_TYPE_DATA)
 
+def_write_fun(write_total_bytes, int)
 def_write_arr_fun(write_out_bytes, 	char, 		MAX_LEN_DATA)
 def_write_arr_fun(write_out_char, 	char, 		MAX_LEN_TYPE_DATA)
 def_write_arr_fun(write_out_short, 	short, 		MAX_LEN_TYPE_DATA)
@@ -265,6 +270,8 @@ static void pat_mux_step(ubx_block_t *c) {
         ubx_port_t* in_long	=	ubx_port_get(c, "in_long");	
         ubx_port_t* in_float	=	ubx_port_get(c, "in_float");	
         ubx_port_t* in_double	=	ubx_port_get(c, "in_double");	
+        ubx_port_t* in_total_bytes	=	ubx_port_get(c, "in_total_bytes");	
+
         ubx_port_t* out_port	=	ubx_port_get(c, "out_port");	
         ubx_port_t* out_char	=	ubx_port_get(c, "out_char");	
         ubx_port_t* out_short	=	ubx_port_get(c, "out_short");	
@@ -272,6 +279,7 @@ static void pat_mux_step(ubx_block_t *c) {
         ubx_port_t* out_long	=	ubx_port_get(c, "out_long");	
         ubx_port_t* out_float	=	ubx_port_get(c, "out_float");	
         ubx_port_t* out_double	=	ubx_port_get(c, "out_double");	
+        ubx_port_t* out_total_bytes	=	ubx_port_get(c, "out_total_bytes");	
 
 	int nNumbers=str2ByteInfo(inf->mux_pattern, inf->typeArr, inf->typeLen);
 	printf("%d nNumbers\n", nNumbers);
@@ -289,8 +297,8 @@ static void pat_mux_step(ubx_block_t *c) {
 #ifdef LOCAL_DEBUG
 #define P_STR_LEN 21 /*Data pattern string length*/
 	DBG("[WARN] Local debug mode, configuration ports are ingored.");
-	char str[P_STR_LEN]="C3F4I4D4S2F2I2D2S4C3";
-	inf->mux_pattern=str;
+	//char str[P_STR_LEN]="C3F4I4D4S2F2I2D2S4C3";
+	//inf->mux_pattern=str;
 	for(int i=0;i<T_DATA_LEN;i++){
 	inf->in_char[i] = char_data[i];
 	inf->in_short[i] = short_data[i];
@@ -340,15 +348,20 @@ static void pat_mux_step(ubx_block_t *c) {
 				break;
 			}
 		}
-	
+		showArray(inf->out_bytes, 114);
 		write_out_bytes(out_port, &(inf->out_bytes));
+		write_total_bytes(out_total_bytes, &total_byte);
 	}
 	
+	
+	int r_total_byte=0;
 	if(inf->mux_type==DEMUX){
-                read_in_bytes(  in_port,        &(inf->in_bytes)        );
+                read_in_bytes	(in_port,        	&(inf->in_bytes)        );
+		read_total_bytes(in_total_bytes,	&r_total_byte);
 #ifdef LOCAL_DEBUG
-	for(int i=0;i<T_LEN;i++)
-		inf->in_bytes[i]=char_res[i];
+//	for(int i=0;i<T_LEN;i++)
+//		inf->in_bytes[i]=char_res[i];
+	r_total_byte=T_LEN;
 #endif
 	        bytes_pt=inf->in_bytes;
 		for(int k=0;k<nNumbers;k++){
@@ -390,13 +403,17 @@ static void pat_mux_step(ubx_block_t *c) {
 				break;
 			}
 		}
-
+		if(r_total_byte!=total_byte){
+			printf("[WARN] total_byte is %d, but expected number of bytes from input port  is %d. Abort.  ", total_byte, r_total_byte);
+		}
+		else{
 		write_out_char(	out_char,	&(inf->out_char)	);
 		write_out_short(out_short,	&(inf->out_short)	);
 		write_out_int(	out_int,	&(inf->out_int)		);
 		write_out_long(	out_long,	&(inf->out_long)	);
 		write_out_float(out_float,	&(inf->out_float)	);
 		write_out_double(out_double,	&(inf->out_double)	);
+		}
 	}
 	
 #ifdef LOCAL_DEBUG
@@ -422,7 +439,7 @@ if(inf->mux_type==MUX){
 }
 
 if(inf->mux_type==DEMUX){
-
+	printf("received in_bytes: \n");
         printf("total_byte=%d \n", total_byte);
         int i;
         for(i=0;i<total_byte;i++){
