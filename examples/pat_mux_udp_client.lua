@@ -24,12 +24,12 @@ ubx.load_module(ni, "std_blocks/udp_client/udp_client.so")
 
 -- create necessary blocks
 print("creating instance of 'webif/webif'")
-webif1=ubx.block_create(ni, "webif/webif", "webif1", { port="8888" })
+webif1=ubx.block_create(ni, "webif/webif", "webif1", { port="8889" })
 
 print("creating instance of 'pat_mux/pat_mux'")
 pat_mux1=ubx.block_create(ni, "pat_mux/pat_mux", "pat_mux1", {pat_mux_config={
 mux_type=0,
-mux_pattern="C3F4I4D4S2F2I2D2S4C3",
+mux_pattern="C3F5I4D4S2F1I2D2S4C3",
 }})
 
 print("creating instance of 'udp_client/udp_client'")

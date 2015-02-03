@@ -71,7 +71,7 @@ ubx_port_t pat_mux_ports[] = {
         { .name="out_short",    .out_type_name="short",         .out_data_len=MAX_LEN_TYPE_DATA },
         { .name="out_int",      .out_type_name="int",           .out_data_len=MAX_LEN_TYPE_DATA },
         { .name="out_long",     .out_type_name="long",          .out_data_len=MAX_LEN_TYPE_DATA },
-        { .name="out_float",    .out_type_name="float",         .out_data_len=MAX_LEN_TYPE_DATA },
+        { .name="out_float",    .out_type_name="float",         .out_data_len=6},
         { .name="out_double",   .out_type_name="double",        .out_data_len=MAX_LEN_TYPE_DATA },
 	{ .name="out_total_bytes",	.out_type_name="int"},
         { NULL },
@@ -100,7 +100,7 @@ struct pat_mux_info {
 	short 	out_short[MAX_LEN_TYPE_DATA];
 	int	out_int[MAX_LEN_TYPE_DATA];
 	long	out_long[MAX_LEN_TYPE_DATA];
-	float	out_float[MAX_LEN_TYPE_DATA];
+	float	out_float[6];
 	double	out_double[MAX_LEN_TYPE_DATA];
 	int 	out_total_bytes;
 
@@ -123,7 +123,7 @@ def_write_arr_fun(write_out_char, 	char, 		MAX_LEN_TYPE_DATA)
 def_write_arr_fun(write_out_short, 	short, 		MAX_LEN_TYPE_DATA)
 def_write_arr_fun(write_out_int, 	int, 		MAX_LEN_TYPE_DATA)
 def_write_arr_fun(write_out_long, 	long, 		MAX_LEN_TYPE_DATA)
-def_write_arr_fun(write_out_float, 	float, 		MAX_LEN_TYPE_DATA)
+def_write_arr_fun(write_out_float, 	float, 		6)
 def_write_arr_fun(write_out_double, 	double, 	MAX_LEN_TYPE_DATA)
 
 template<typename T>
@@ -403,17 +403,17 @@ static void pat_mux_step(ubx_block_t *c) {
 				break;
 			}
 		}
-		if(r_total_byte!=total_byte){
+		/*if(r_total_byte!=total_byte){
 			printf("[WARN] total_byte is %d, but expected number of bytes from input port  is %d. Abort.  ", total_byte, r_total_byte);
 		}
-		else{
+		else{*/
 		write_out_char(	out_char,	&(inf->out_char)	);
 		write_out_short(out_short,	&(inf->out_short)	);
 		write_out_int(	out_int,	&(inf->out_int)		);
 		write_out_long(	out_long,	&(inf->out_long)	);
 		write_out_float(out_float,	&(inf->out_float)	);
 		write_out_double(out_double,	&(inf->out_double)	);
-		}
+		//}
 	}
 	
 #ifdef LOCAL_DEBUG

@@ -101,11 +101,6 @@ float invJ[8]={
 -19.231,  -19.231,
  19.231,  -19.231
 };
-
-//type_f Xmax_const[FMPC_GN]={5,5,MAX_A_VAL,MAX_A_VAL2};
-//type_f Xmin_const[FMPC_GN]={-5,-5,-MAX_A_VAL,-MAX_A_VAL2};
-//type_f Umax_const[FMPC_GN]={UMAX_C,UMAX_C,UMAX_C,UMAX_C};
-//type_f Umin_const[FMPC_GN]={UMIN_C,UMIN_C,UMIN_C,UMIN_C};
 #define X_AO_LEN 40
 #define U_AO_LEN 40
 
@@ -128,17 +123,6 @@ char fmpc_meta[] =
  * if an array is required, then .value = { .len=<LENGTH> } can be used.
  */
 ubx_config_t fmpc_config[] = {
-/*	{ .name="param_kappa", 		.type_name = "float" },
-	{ .name="param_iteration",	.type_name = "int" },
-	{ .name="param_fence",		.type_name = "float",	.value={.len=4} },
-	{ .name="param_states_max",	.type_name = "float",	.value={.len=4} },
-	{ .name="param_states_min",	.type_name = "float",	.value={.len=4} },
-	{ .name="param_state_init",	.type_name = "float",	.value={.len=4} },
-	{ .name="param_inputs_max",	.type_name = "float",	.value={.len=4} },
-	{ .name="param_inputs_min",	.type_name = "float",	.value={.len=4} },
-	{ .name="param_inputs_init",	.type_name = "float",	.value={.len=4} },
-	{ .name="param_obstacle",	.type_name = "float",	.value={.len=3} },
-*/	
 	{.name="fmpc_config", .type_name="struct fmpc_config"},	
 	{ NULL },
 };
@@ -154,7 +138,8 @@ ubx_port_t fmpc_ports[] = {
 	{ .name="fmpc_virtual_fence", .in_type_name="float", .in_data_len=4},
 	{ .name="fmpc_obstacle", .in_type_name="float", .in_data_len=3},
 	{ .name="fmpc_goal_pose", .in_type_name="float", .in_data_len=2},
-	{ .name="fmpc_robot_pose", .out_type_name="float", .out_data_len=2},
+	{ .name="fmpc_robot_pose", .out_type_name="float", .out_data_len=2},	
+	{ .name="fmpc_wm_info_in", .in_type_name="float", .in_data_len=6},
 	{ NULL },
 };
 
@@ -213,6 +198,7 @@ def_write_arr_fun(write_char256, char, 256);
 def_read_arr_fun(read_float3, float, 3);
 def_write_arr_fun(write_float2, float, 2);
 def_read_arr_fun(read_float2, float, 2);
+def_read_arr_fun(read_float5, float, 5);
 
 static int fmpc_init(ubx_block_t *c)
 {
@@ -325,6 +311,7 @@ static void fmpc_step(ubx_block_t *c) {
 	float obstacle[3];
 	float robot_pose[2];
 	float goal_pose[2];
+	float fmpc_wm_info[5];
 	/* get ports */
 	ubx_port_t* p_cmd_vel = ubx_port_get(c, "cmd_vel");
         ubx_port_t* p_cmd_twist = ubx_port_get(c, "cmd_twist");
@@ -334,6 +321,7 @@ static void fmpc_step(ubx_block_t *c) {
 	ubx_port_t* p_obstacle_info = ubx_port_get(c, "fmpc_obstacle");        
 	ubx_port_t* p_fmpc_robot_pose = ubx_port_get(c, "fmpc_robot_pose");        
 	ubx_port_t* p_fmpc_goal_pose = ubx_port_get(c, "fmpc_goal_pose");
+	ubx_port_t* p_fmpc_wm_info_in = ubx_port_get(c, "fmpc_wm_info_in");
 	
 	/* read new motorinfo */
         read_motorinfo(p_motorinfo, & ymi);
@@ -349,15 +337,33 @@ static void fmpc_step(ubx_block_t *c) {
                       read_kdl_frame(fmpc_odom_port, &fmpc_odom_frame));
 	*/
 
+	ret=read_float5(p_fmpc_wm_info_in, &fmpc_wm_info);
+	printf("dadada ret%d\n", ret);
+	if(ret==5){
+		inf->goal_pose[0]=fmpc_wm_info[0];
+		inf->goal_pose[1]=fmpc_wm_info[1];
+		inf->obstacle[0]=fmpc_wm_info[2]-fmpc_wm_info[0];
+		inf->obstacle[1]=fmpc_wm_info[3]-fmpc_wm_info[1];
+		inf->obstacle[2]=fmpc_wm_info[4];
+		//printf("%f,%f\n",inf->obstacle[0],inf->obstacle[1]);
+		goal_pose[0]=fmpc_wm_info[0];
+		goal_pose[1]=fmpc_wm_info[1];
+		obstacle[0]=fmpc_wm_info[2];
+		obstacle[1]=fmpc_wm_info[3];
+		obstacle[2]=fmpc_wm_info[4];
+	}
+	else{
 	read_float2(p_fmpc_goal_pose, &goal_pose);	
+	ret = read_float3(p_obstacle_info, &obstacle);
 	inf->goal_pose[0]=goal_pose[0];
 	inf->goal_pose[1]=goal_pose[1];
-	ret = read_float3(p_obstacle_info, &obstacle);
 	if(ret>0){
 		inf->obstacle[0]=obstacle[0]-goal_pose[0];
 		inf->obstacle[1]=obstacle[1]-goal_pose[1];
 	}
+	}
 	
+
 	printf("goal_pose: %f, %f\n", goal_pose[0], goal_pose[1]);
 	printf("obs_pose: %f, %f, %f\n", obstacle[0], obstacle[1],obstacle[2]);
         

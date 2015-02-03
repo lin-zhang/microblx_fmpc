@@ -190,6 +190,8 @@ static void udp_server_step(ubx_block_t *b) {
 		write_bytes(data_port, &(inf->buf)); 
     	}
         write(1, "\n", 1);
+
+#ifdef LOCAL_PRINT
         printf("prepared data to send out:\n");
 
         int i=0;
@@ -199,7 +201,7 @@ static void udp_server_step(ubx_block_t *b) {
                 if(i%16==15) printf("\n");
         }
         printf("\n");
-
+#endif
 }
 
 
