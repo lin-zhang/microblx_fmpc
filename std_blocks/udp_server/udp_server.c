@@ -183,15 +183,16 @@ static void udp_server_step(ubx_block_t *b) {
 	struct sockaddr_in other;
 
 	if ((inf->n = recvfrom(inf->s, inf->buf, BUF_SIZE, 0, (struct sockaddr *) &other, &len)) != -1) {
+#ifdef LOCAL_PRINT
 		printf("Received from %s:%d: ", 
 		inet_ntoa(other.sin_addr), 
 		ntohs(other.sin_port)); 
+#endif
 		fflush(stdout);
 		write_bytes(data_port, &(inf->buf)); 
     	}
-        write(1, "\n", 1);
-
 #ifdef LOCAL_PRINT
+        write(1, "\n", 1);
         printf("prepared data to send out:\n");
 
         int i=0;

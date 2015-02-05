@@ -67,7 +67,7 @@ ptrig1=ubx.block_create(ni, "std_triggers/ptrig", "ptrig1",
 
 print("creating instance of 'std_triggers/ptrig'")
 ptrig4=ubx.block_create(ni, "std_triggers/ptrig", "ptrig4",
-			{ period={sec=0, usec=100000 }, sched_policy="SCHED_FIFO", sched_priority=80,
+			{ period={sec=0, usec=50000 }, sched_policy="SCHED_FIFO", sched_priority=80,
 			  trig_blocks={ { b=pat_mux1, num_steps=1, measure=0 },
 					{ b=pat_mux2, num_steps=1, measure=0 },
 					{ b=udp_server1, num_steps=1, measure=0},

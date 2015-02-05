@@ -181,14 +181,14 @@ int str2ByteInfo(char *str, char *typeArr, int *typeLen){
 	        long val = strtol(p, &p, 10); // Read a number, ...
 	        typeLen[i]=val;
 	        i++;
-	        printf("%ld\n", val); // and print it.
+	        //printf("%ld\n", val); // and print it.
 	    } else { // Otherwise, move on to the next character.
 	    	typeArr[i]=*p;
 	        p++;
 	    }
 	}
 	typeArr[i]='\0';
-	printf("%s\n", typeArr); // and print it.
+	//printf("%s\n", typeArr); // and print it.
 	return i;
 	}
 
@@ -282,7 +282,7 @@ static void pat_mux_step(ubx_block_t *c) {
         ubx_port_t* out_total_bytes	=	ubx_port_get(c, "out_total_bytes");	
 
 	int nNumbers=str2ByteInfo(inf->mux_pattern, inf->typeArr, inf->typeLen);
-	printf("%d nNumbers\n", nNumbers);
+	//printf("%d nNumbers\n", nNumbers);
 	char* bytes_pt;
 	total_byte=0;
 	if(inf->mux_type==MUX){
@@ -306,8 +306,10 @@ static void pat_mux_step(ubx_block_t *c) {
 	inf->in_float[i] = float_data[i];
 	inf->in_double[i] = double_data[i];
 	}
+#ifdef LOCAL_PRINT
 	for(int i=0;i<10;i++)
 	printf("%3d typeLen[i] %c\n", inf->typeLen[i], inf->typeArr[i]);
+#endif
 #endif
 		for(int k=0;k<nNumbers;k++){
 			switch(inf->typeArr[k]){
@@ -348,7 +350,7 @@ static void pat_mux_step(ubx_block_t *c) {
 				break;
 			}
 		}
-		showArray(inf->out_bytes, 114);
+		//showArray(inf->out_bytes, 114);
 		write_out_bytes(out_port, &(inf->out_bytes));
 		write_total_bytes(out_total_bytes, &total_byte);
 	}
@@ -418,8 +420,7 @@ static void pat_mux_step(ubx_block_t *c) {
 	
 #ifdef LOCAL_DEBUG
 if(inf->mux_type==MUX){
-	
-
+#ifdef LOCAL_PRINT
 	printf("total_byte=%d \n", total_byte);
 	int i;
 	for(i=0;i<total_byte;i++){
@@ -430,12 +431,12 @@ if(inf->mux_type==MUX){
 			printf("\n");
 	}
 	printf("\n");
-
         showArray(inf->in_float,       T_DATA_LEN);
         showArray(inf->in_int,         T_DATA_LEN);
         showArray(inf->in_short,       T_DATA_LEN);
         showArray(inf->in_double,      T_DATA_LEN);
         showArray(inf->in_char,        T_DATA_LEN);
+#endif
 }
 
 if(inf->mux_type==DEMUX){

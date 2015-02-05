@@ -183,7 +183,7 @@ static void udp_client_step(ubx_block_t *b) {
 	unsigned int len = sizeof(struct sockaddr_in);
 	ubx_port_t* data_port = ubx_port_get(b, "data_in");
 	ret=read_bytes(data_port, &(inf->buf));
-	printf("ret %d\n", ret);
+	//printf("ret %d\n", ret);
 
 	size_t intm;
 	intm=(size_t)sizeof(inf->buf);
