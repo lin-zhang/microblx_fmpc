@@ -48,7 +48,7 @@ mux_pattern="F2",
 }})
 
 print("creating instance of 'udp_client/udp_client'")
-udp_client1=ubx.block_create(ni, "udp_client/udp_client", "udp_client1", {udp_client_config={host_ip='localhost', port=62000}})
+udp_client1=ubx.block_create(ni, "udp_client/udp_client", "udp_client1", {udp_client_config={host_ip='192.168.10.133', port=62000}})
 
 print("creating instance of 'udp_server/udp_server'")
 udp_server1=ubx.block_create(ni, "udp_server/udp_server", "udp_server1", {udp_server_config={port=51068}})
@@ -67,7 +67,7 @@ ptrig1=ubx.block_create(ni, "std_triggers/ptrig", "ptrig1",
 
 print("creating instance of 'std_triggers/ptrig'")
 ptrig4=ubx.block_create(ni, "std_triggers/ptrig", "ptrig4",
-			{ period={sec=0, usec=50000 }, sched_policy="SCHED_FIFO", sched_priority=80,
+			{ period={sec=0, usec=100000 }, sched_policy="SCHED_FIFO", sched_priority=80,
 			  trig_blocks={ { b=pat_mux1, num_steps=1, measure=0 },
 					{ b=pat_mux2, num_steps=1, measure=0 },
 					{ b=udp_server1, num_steps=1, measure=0},
@@ -75,11 +75,11 @@ ptrig4=ubx.block_create(ni, "std_triggers/ptrig", "ptrig4",
 
 print("creating instance of 'fmpc/fmpc'")
 fmpc1=ubx.block_create(ni, "fmpc/fmpc", "fmpc1", {fmpc_config={
-param_kappa=5e-5,
+param_kappa=5e-4,
 param_iteration=12,
 param_fence={0,0,0,0},
-param_states_max={5,5,0.4,0.4},
-param_states_min={-5,-5,-0.4,-0.4},
+param_states_max={10,10,0.4,0.4},
+param_states_min={-10,-10,-0.4,-0.4},
 param_states_init={-5,0,0,0},
 param_inputs_max={3.9195,3.9195,3.9195,3.9195},
 param_inputs_min={-3.9195,-3.9195,-3.9195,-3.9195},
@@ -104,6 +104,8 @@ fifo6=ubx.block_create(ni, "lfds_buffers/cyclic", "fifo6", {element_num=4, eleme
 print("creating instance of 'lfds_buffers/cyclic'")
 fifo7=ubx.block_create(ni, "lfds_buffers/cyclic", "fifo7", {element_num=4, element_size=512})
 
+print("creating instance of 'lfds_buffers/cyclic'")
+fifo8=ubx.block_create(ni, "lfds_buffers/cyclic", "fifo8", {element_num=4, element_size=512})
 print("creating instance of 'logging/file_logger'")
 
 rep_conf=[[
@@ -424,8 +426,8 @@ p_pat_mux_out_float=ubx.port_get(pat_mux1, "out_float");
 
 p_fmpc_robot_pose=ubx.port_get(fmpc1, 'fmpc_robot_pose');
 p_pat_mux_in_float = ubx.port_get(pat_mux2, "in_float");
-ubx.port_connect_in(p_pat_mux_in_float, fifo7);
-ubx.port_connect_out(p_fmpc_robot_pose, fifo7);
+ubx.port_connect_in(p_pat_mux_in_float, fifo8);
+ubx.port_connect_out(p_fmpc_robot_pose, fifo8);
 
 ubx.port_connect_in(p_fmpc_wm_info_in, fifo6);
 ubx.port_connect_out(p_pat_mux_out_float, fifo6);
@@ -520,6 +522,7 @@ ubx.block_init(fifo3);
 ubx.block_init(fifo4);
 ubx.block_init(fifo6);
 ubx.block_init(fifo7);
+ubx.block_init(fifo8);
 assert(ubx.block_init(ptrig1))
 assert(ubx.block_init(ptrig2))
 assert(ubx.block_init(ptrig3))
@@ -542,6 +545,7 @@ ubx.block_start(fifo3);
 ubx.block_start(fifo4);
 ubx.block_start(fifo6);
 ubx.block_start(fifo7);
+ubx.block_start(fifo8);
 assert(ubx.block_start(webif1)==0)
 assert(ubx.block_start(file_log1)==0)
 assert(ubx.block_start(fmpc1)==0)

@@ -25,7 +25,7 @@ using namespace std;
 
 using namespace std;
 using namespace MOL;
-//#define FMPC_HW
+#define FMPC_HW
 #ifdef FMPC_HW
 #define XFmpc_WriteReg(BaseAddress, RegOffset, Data) \
     *(volatile u32*)((BaseAddress) + (RegOffset)) = (u32)(Data)
@@ -298,10 +298,11 @@ static int fmpc_start(ubx_block_t *c)
 	cout << "fmpc_start: hi from " << c->name << endl;
 	return 0; /* Ok */
 }
-
+float prev_goal[2];
 static void fmpc_step(ubx_block_t *c) {
 	int32_t cmd_vel[4];
 	int ret;
+	int reset_flag=0;
 	struct fmpc_info* inf = (struct fmpc_info*) c->private_data;
 	struct kdl_frame fmpc_odom_frame, fmpc_odom_frame_local;
 	struct kdl_twist fmpc_twist;
@@ -337,6 +338,9 @@ static void fmpc_step(ubx_block_t *c) {
                       read_kdl_frame(fmpc_odom_port, &fmpc_odom_frame));
 	*/
 
+        prev_goal[0]=inf->goal_pose[0];
+        prev_goal[1]=inf->goal_pose[1];
+	
 	ret=read_float5(p_fmpc_wm_info_in, &fmpc_wm_info);
 	printf("dadada ret%d\n", ret);
 	if(ret==5){
@@ -354,7 +358,7 @@ static void fmpc_step(ubx_block_t *c) {
 	}
 	else{
 	read_float2(p_fmpc_goal_pose, &goal_pose);	
-	ret = read_float3(p_obstacle_info, &obstacle);
+	ret = read_float3(p_obstacle_info, &obstacle);	
 	inf->goal_pose[0]=goal_pose[0];
 	inf->goal_pose[1]=goal_pose[1];
 	if(ret>0){
@@ -362,7 +366,21 @@ static void fmpc_step(ubx_block_t *c) {
 		inf->obstacle[1]=obstacle[1]-goal_pose[1];
 	}
 	}
+
+
+
+	if(prev_goal[0]==inf->goal_pose[0]&&prev_goal[1]==inf->goal_pose[1]){
+		reset_flag=0;	
+	}
+	else
+		reset_flag=1;
 	
+	if(reset_flag==1){
+        Matrix2array(X_m,inf->X_a);
+        Matrix2array(U_m,inf->U_a);
+	}
+	printf("prev_goal(%f,%f), next_goal(%f,%f), reset_flag: %d\n",prev_goal[0], prev_goal[1] , goal_pose[0], goal_pose[1], reset_flag);
+		
 
 	printf("goal_pose: %f, %f\n", goal_pose[0], goal_pose[1]);
 	printf("obs_pose: %f, %f, %f\n", obstacle[0], obstacle[1],obstacle[2]);
@@ -389,7 +407,7 @@ static void fmpc_step(ubx_block_t *c) {
         write_kdl_twist(p_cmd_twist, &cmd_twist);
 	
 	sprintf(data_buf, "%8.3f,%8.3f,%8.3f,%8.3f,%8.3f,%8.3f,%8.3f,%8.3f,%8.3f,%8.3f,%8.3f,%8.3f,%8.3f,\
-		%8.3f, %8.3f, %8.3f, %8.3f, %8.3f, %8.3f,\
+		ss %8.3f, %8.3f, %8.3f, %8.3f, %8.3f, %8.3f,\
 		%8.3f, %8.3f, %8.3f, %8.3f, %8.3f, %8.3f,\
 		%8.3f, %8.3f, %8.3f, %8.3f, %8.3f, %8.3f,\
 		%8.3f,%8.3f\n", 
@@ -412,6 +430,7 @@ static void fmpc_step(ubx_block_t *c) {
 		inf->X_a[36],inf->X_a[37]
 		);
 	write_char256(p_youbot_info,&data_buf);
+	printf("%s",data_buf);
 	//printf("%f,%f,%f\n",cmd_twist.vel.x, cmd_twist.vel.y, cmd_twist.rot.z);
 	//printf("%f,%f,%f\n",fmpc_twist.vel.x,fmpc_twist.vel.y, fmpc_twist.rot.z);
 }
