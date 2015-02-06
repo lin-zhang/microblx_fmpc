@@ -48,7 +48,7 @@ mux_pattern="F2",
 }})
 
 print("creating instance of 'udp_client/udp_client'")
-udp_client1=ubx.block_create(ni, "udp_client/udp_client", "udp_client1", {udp_client_config={host_ip='localhost', port=62000}})
+udp_client1=ubx.block_create(ni, "udp_client/udp_client", "udp_client1", {udp_client_config={host_ip='192.168.10.133', port=62000}})
 
 print("creating instance of 'udp_server/udp_server'")
 udp_server1=ubx.block_create(ni, "udp_server/udp_server", "udp_server1", {udp_server_config={port=51068}})
@@ -67,9 +67,15 @@ ptrig1=ubx.block_create(ni, "std_triggers/ptrig", "ptrig1",
 
 print("creating instance of 'std_triggers/ptrig'")
 ptrig4=ubx.block_create(ni, "std_triggers/ptrig", "ptrig4",
-			{ period={sec=0, usec=50000 }, sched_policy="SCHED_FIFO", sched_priority=80,
+			{ period={sec=0, usec=100000 }, sched_policy="SCHED_FIFO", sched_priority=80,
 			  trig_blocks={ { b=pat_mux1, num_steps=1, measure=0 },
-					{ b=pat_mux2, num_steps=1, measure=0 },
+					{ b=pat_mux2, num_steps=1, measure=0 }
+					 } } )
+
+print("creating instance of 'std_triggers/ptrig'")
+ptrig5=ubx.block_create(ni, "std_triggers/ptrig", "ptrig5",
+			{ period={sec=0, usec=50000 }, sched_policy="SCHED_FIFO", sched_priority=99,
+			  trig_blocks={ 
 					{ b=udp_server1, num_steps=1, measure=0},
 					{ b=udp_client1, num_steps=1, measure=0} } } )
 
@@ -78,9 +84,9 @@ fmpc1=ubx.block_create(ni, "fmpc/fmpc", "fmpc1", {fmpc_config={
 param_kappa=5e-5,
 param_iteration=12,
 param_fence={0,0,0,0},
-param_states_max={5,5,0.4,0.4},
-param_states_min={-5,-5,-0.4,-0.4},
-param_states_init={-5,0,0,0},
+param_states_max={10,10,0.6,0.6},
+param_states_min={-10,-10,-0.6,-0.6},
+param_states_init={-10,0,0,0},
 param_inputs_max={3.9195,3.9195,3.9195,3.9195},
 param_inputs_min={-3.9195,-3.9195,-3.9195,-3.9195},
 param_inputs_init={0,0,0,0},
@@ -103,6 +109,9 @@ fifo6=ubx.block_create(ni, "lfds_buffers/cyclic", "fifo6", {element_num=4, eleme
 
 print("creating instance of 'lfds_buffers/cyclic'")
 fifo7=ubx.block_create(ni, "lfds_buffers/cyclic", "fifo7", {element_num=4, element_size=512})
+
+print("creating instance of 'lfds_buffers/cyclic'")
+fifo8=ubx.block_create(ni, "lfds_buffers/cyclic", "fifo8", {element_num=4, element_size=512})
 
 print("creating instance of 'logging/file_logger'")
 
@@ -127,11 +136,11 @@ ptrig2=ubx.block_create(ni, "std_triggers/ptrig", "ptrig2",
                           trig_blocks={
                                         { b=fmpc1, num_steps=1, measure=0} } } )
 
-print("creating instance of 'std_triggers/ptrig'")
-ptrig3=ubx.block_create(ni, "std_triggers/ptrig", "ptrig3",
-                        { period={sec=0, usec=100000 },
-                          trig_blocks={
-                                        } } )
+--print("creating instance of 'std_triggers/ptrig'")
+--ptrig3=ubx.block_create(ni, "std_triggers/ptrig", "ptrig3",
+--                        { period={sec=0, usec=100000 },
+--                          trig_blocks={
+--                                        } } )
 
 
 --- Create a table of all inversely connected ports:
@@ -400,8 +409,8 @@ ubx.port_connect_out(p_udp_server_data_out, fifo5);
 
 p_pat_mux_out_port=ubx.port_get(pat_mux2, "out_port");
 p_udp_client_data_in=ubx.port_get(udp_client1, "data_in");
-ubx.port_connect_out(p_pat_mux_out_port, fifo7);
-ubx.port_connect_in(p_udp_client_data_in, fifo7);
+ubx.port_connect_out(p_pat_mux_out_port, fifo8);
+ubx.port_connect_in(p_udp_client_data_in, fifo8);
 
 p_fmpc_cmd_vel=ubx.port_get(fmpc1, "cmd_vel")
 p_fmpc_cmd_twist=ubx.port_get(fmpc1, "cmd_twist")
@@ -454,7 +463,7 @@ function fmpc_run(dur_in)
    local ts_cur=gettime()
    local diff = {sec=0,nsec=0}
    ubx.block_start(ptrig2)
-   ubx.block_start(ptrig3)
+--   ubx.block_start(ptrig3)
    while true do
       ubx.cblock_step(file_log1)
       diff.sec,diff.nsec=time.sub(ts_cur, ts_start)
@@ -464,7 +473,7 @@ function fmpc_run(dur_in)
       ts_cur=gettime()
    end
    ubx.block_stop(ptrig2)
-   ubx.block_stop(ptrig3)
+--   ubx.block_stop(ptrig3)
    ubx.port_write(p_fmpc_cmd_twist, base_null_twist_data)
 end
 
@@ -490,7 +499,7 @@ function fmpc_move(dur_in, goal_arr, obs_arr)
    local ts_cur=gettime()
    local diff = {sec=0,nsec=0}
    ubx.block_start(ptrig2)
-   ubx.block_start(ptrig3)
+--   ubx.block_start(ptrig3)
    while true do
       ubx.cblock_step(file_log1)
       diff.sec,diff.nsec=time.sub(ts_cur, ts_start)
@@ -500,54 +509,58 @@ function fmpc_move(dur_in, goal_arr, obs_arr)
       ts_cur=gettime()
    end
    ubx.block_stop(ptrig2)
-   ubx.block_stop(ptrig3)
+--   ubx.block_stop(ptrig3)
    ubx.port_write(p_fmpc_cmd_twist, base_null_twist_data)
 end
 
-
-ubx.block_init(fifo5);
-assert(ubx.block_init(webif1)==0)
-assert(ubx.block_init(ptrig4)==0)
-assert(ubx.block_init(pat_mux1)==0)
-assert(ubx.block_init(pat_mux2)==0)
-assert(ubx.block_init(udp_client1)==0)
-assert(ubx.block_init(udp_server1)==0)
 
 -- start and init webif and youbot
 ubx.block_init(fifo1);
 ubx.block_init(fifo2);
 ubx.block_init(fifo3);
 ubx.block_init(fifo4);
-ubx.block_init(fifo6);
-ubx.block_init(fifo7);
 assert(ubx.block_init(ptrig1))
 assert(ubx.block_init(ptrig2))
-assert(ubx.block_init(ptrig3))
+--assert(ubx.block_init(ptrig3))
 assert(ubx.block_init(file_log1))
+assert(ubx.block_init(webif1)==0)
 assert(ubx.block_init(fmpc1)==0)
 assert(ubx.block_init(youbot1)==0)
 
+ubx.block_init(fifo5);
+assert(ubx.block_init(ptrig4)==0)
+assert(ubx.block_init(ptrig5)==0)
+assert(ubx.block_init(pat_mux1)==0)
+assert(ubx.block_init(pat_mux2)==0)
+assert(ubx.block_init(udp_client1)==0)
+assert(ubx.block_init(udp_server1)==0)
+ubx.block_init(fifo6);
+ubx.block_init(fifo7);
+ubx.block_init(fifo8);
 
 nr_arms=ubx.data_tolua(ubx.config_get_data(youbot1, "nr_arms"))
 
-ubx.block_start(fifo5);
-assert(ubx.block_start(pat_mux1)==0)
-assert(ubx.block_start(pat_mux2)==0)
-assert(ubx.block_start(ptrig4)==0)
-assert(ubx.block_start(udp_client1)==0)
-assert(ubx.block_start(udp_server1)==0)
 ubx.block_start(fifo1);
 ubx.block_start(fifo2);
 ubx.block_start(fifo3);
 ubx.block_start(fifo4);
-ubx.block_start(fifo6);
-ubx.block_start(fifo7);
 assert(ubx.block_start(webif1)==0)
 assert(ubx.block_start(file_log1)==0)
 assert(ubx.block_start(fmpc1)==0)
 assert(ubx.block_start(youbot1)==0)
 assert(ubx.block_start(ptrig1)==0)
 
+ubx.block_start(fifo5);
+assert(ubx.block_start(pat_mux1)==0)
+assert(ubx.block_start(pat_mux2)==0)
+assert(ubx.block_start(ptrig4)==0)
+assert(ubx.block_start(ptrig5)==0)
+assert(ubx.block_start(udp_client1)==0)
+assert(ubx.block_start(udp_server1)==0)
+
+ubx.block_start(fifo6);
+ubx.block_start(fifo7);
+ubx.block_start(fifo8);
 -- make sure youbot is running ok.
 base_initialized()
 

@@ -104,6 +104,9 @@ float invJ[8]={
 #define X_AO_LEN 40
 #define U_AO_LEN 40
 
+	float g_xmax[4];
+	float g_xmin[4];
+
 ubx_type_t fmpc_config_type = def_struct_type(struct fmpc_config, &fmpc_config_h);
 /* function block meta-data
  * used by higher level functions.
@@ -254,6 +257,10 @@ static int fmpc_init(ubx_block_t *c)
 	param_states_min_arr[i]=fmpc_conf->param_states_min[i];
 	param_inputs_max_arr[i]=fmpc_conf->param_inputs_max[i];
 	param_inputs_min_arr[i]=fmpc_conf->param_inputs_min[i];
+
+	g_xmax[i]=fmpc_conf->param_states_max[i];
+	g_xmin[i]=fmpc_conf->param_states_min[i];
+
 	inf->Xmax_const[i]=fmpc_conf->param_states_max[i];
 	inf->Xmin_const[i]=fmpc_conf->param_states_min[i];
 	inf->x_a[i]=fmpc_conf->param_states_init[i];
@@ -298,6 +305,9 @@ static int fmpc_start(ubx_block_t *c)
 	cout << "fmpc_start: hi from " << c->name << endl;
 	return 0; /* Ok */
 }
+float prev_goal[2];
+float prev_obs[2];
+int reset_flag=0;
 
 static void fmpc_step(ubx_block_t *c) {
 	int32_t cmd_vel[4];
@@ -337,6 +347,11 @@ static void fmpc_step(ubx_block_t *c) {
                       read_kdl_frame(fmpc_odom_port, &fmpc_odom_frame));
 	*/
 
+        prev_goal[0]=inf->goal_pose[0];
+        prev_goal[1]=inf->goal_pose[1];
+	prev_obs[0]=inf->obstacle[0];
+        prev_obs[1]=inf->obstacle[1];
+
 	ret=read_float5(p_fmpc_wm_info_in, &fmpc_wm_info);
 	printf("dadada ret%d\n", ret);
 	if(ret==5){
@@ -363,6 +378,25 @@ static void fmpc_step(ubx_block_t *c) {
 	}
 	}
 	
+        if((prev_goal[0]==inf->goal_pose[0]&&prev_goal[1]==inf->goal_pose[1])
+		||(prev_obs[0]==inf->obstacle[0]&&prev_obs[1]==inf->obstacle[1])
+		){
+                reset_flag=0;
+        }
+        else
+                reset_flag=1;
+
+        if(reset_flag==1){
+        Matrix2array(X_m,inf->X_a);
+        //Matrix2array(U_m,inf->U_a);
+        for(int i=0;i<FMPC_GT;i++){
+                for(int j=0;j<FMPC_GN;j++){
+                        inf->xmax_a[i*FMPC_GN+j]=g_xmax[i];
+                        inf->xmin_a[i*FMPC_GN+j]=g_xmin[i];
+                }
+        }
+        }
+
 
 	printf("goal_pose: %f, %f\n", goal_pose[0], goal_pose[1]);
 	printf("obs_pose: %f, %f, %f\n", obstacle[0], obstacle[1],obstacle[2]);
@@ -374,7 +408,7 @@ static void fmpc_step(ubx_block_t *c) {
 
         	youbot_fmpc(inf, &fmpc_odom_frame_local, &fmpc_twist, &cmd_twist, cmd_vel);
         }
-	
+	printf("[local init_x[0], init_y[1]], %f, %f\n", fmpc_odom_frame_local.p.x, fmpc_odom_frame_local.p.y);
 	//robot_pose[0]=fmpc_odom_frame.p.x+inf->init_x[0];
 	//robot_pose[1]=fmpc_odom_frame.p.y+inf->init_x[1];
 
@@ -528,6 +562,7 @@ k=0;
                 if((inf->X_a[j*FMPC_GN]-inf->obstacle[0])*(inf->X_a[j*FMPC_GN]-inf->obstacle[0])+(inf->X_a[j*FMPC_GN+1]-inf->obstacle[1])*(inf->X_a[j*FMPC_GN+1]-inf->obstacle[1])<inf->obstacle[2]*inf->obstacle[2]){
                 	
 			float s0=0.0;
+			float tmp_val[4];
 			s0=cal_passover_side(inf->X_a[j*FMPC_GN],inf->X_a[j*FMPC_GN+1],0,0,inf->obstacle[0],inf->obstacle[1]);
 		
 			printf("s0=%f",s0);	
@@ -535,18 +570,35 @@ k=0;
 			if(s0>0){
 				//factor=1.0;
 				//flag=0;
-			inf->xmax_a[j*4+1]=-sqrt(inf->obstacle[2]*inf->obstacle[2]-(inf->X_a[j*FMPC_GN]-inf->obstacle[0])*(inf->X_a[j*FMPC_GN]-inf->obstacle[0]))+inf->obstacle[1]*factor;
-			inf->xmax_a[j*4]=-sqrt(inf->obstacle[2]*inf->obstacle[2]-(inf->X_a[j*FMPC_GN+1]-inf->obstacle[1])*(inf->X_a[j*FMPC_GN+1]-inf->obstacle[1]))+inf->obstacle[0]*(-factor);
+			tmp_val[1]=-sqrt(inf->obstacle[2]*inf->obstacle[2]-(inf->X_a[j*FMPC_GN]-inf->obstacle[0])*(inf->X_a[j*FMPC_GN]-inf->obstacle[0]))+inf->obstacle[1]*factor;
+			tmp_val[0]=-sqrt(inf->obstacle[2]*inf->obstacle[2]-(inf->X_a[j*FMPC_GN+1]-inf->obstacle[1])*(inf->X_a[j*FMPC_GN+1]-inf->obstacle[1]))+inf->obstacle[0]*(-factor);
 			//inf->xmax_a[j*4+1]=inf->xmin_a[j*4+1];
-			//printf("above? inf->xmax_a[x,y]=%f,%f\n", inf->xmax_a[j*4], inf->xmax_a[j*4+1]);
+	
+			if(tmp_val[0]>inf->xmin_a[j*4]&&tmp_val[1]>inf->xmin_a[j*4+1]){
+			 inf->xmax_a[j*4]=tmp_val[0];
+			 inf->xmax_a[j*4+1]=tmp_val[1];
+			}
+
+/*			inf->xmax_a[j*4+1]=-sqrt(inf->obstacle[2]*inf->obstacle[2]-(inf->X_a[j*FMPC_GN]-inf->obstacle[0])*(inf->X_a[j*FMPC_GN]-inf->obstacle[0]))+inf->obstacle[1]*factor;
+			inf->xmax_a[j*4]=-sqrt(inf->obstacle[2]*inf->obstacle[2]-(inf->X_a[j*FMPC_GN+1]-inf->obstacle[1])*(inf->X_a[j*FMPC_GN+1]-inf->obstacle[1]))+inf->obstacle[0]*(-factor);
+*/
+			printf("above? inf->xmax_a[x,y]=%f,%f\n", inf->xmax_a[j*4], inf->xmax_a[j*4+1]);
 			}
 			else{
 				//factor=1.0;        
 				//flag=1;
-			inf->xmin_a[j*4+1]=sqrt(inf->obstacle[2]*inf->obstacle[2]-(inf->X_a[j*FMPC_GN]-inf->obstacle[0])*(inf->X_a[j*FMPC_GN]-inf->obstacle[0]))+inf->obstacle[1]*factor;
-			inf->xmin_a[j*4]=sqrt(inf->obstacle[2]*inf->obstacle[2]-(inf->X_a[j*FMPC_GN+1]-inf->obstacle[1])*(inf->X_a[j*FMPC_GN+1]-inf->obstacle[1]))+inf->obstacle[0]*(-factor);
+/*			inf->xmin_a[j*4+1]=sqrt(inf->obstacle[2]*inf->obstacle[2]-(inf->X_a[j*FMPC_GN]-inf->obstacle[0])*(inf->X_a[j*FMPC_GN]-inf->obstacle[0]))+inf->obstacle[1]*factor;
+			inf->xmin_a[j*4]=sqrt(inf->obstacle[2]*inf->obstacle[2]-(inf->X_a[j*FMPC_GN+1]-inf->obstacle[1])*(inf->X_a[j*FMPC_GN+1]-inf->obstacle[1]))+inf->obstacle[0]*(-factor);*/
                         //inf->xmin_a[j*4+1]=inf->xmax_a[j*4+1];
-			//printf("underneath? inf->xmin_a(x,y)=%f,%f\n", inf->xmin_a[j*4],inf->xmin_a[j*4+1]);
+			tmp_val[3]=sqrt(inf->obstacle[2]*inf->obstacle[2]-(inf->X_a[j*FMPC_GN]-inf->obstacle[0])*(inf->X_a[j*FMPC_GN]-inf->obstacle[0]))+inf->obstacle[1]*factor;
+			tmp_val[2]=sqrt(inf->obstacle[2]*inf->obstacle[2]-(inf->X_a[j*FMPC_GN+1]-inf->obstacle[1])*(inf->X_a[j*FMPC_GN+1]-inf->obstacle[1]))+inf->obstacle[0]*(-factor);
+
+                        if(tmp_val[2]<inf->xmax_a[j*4]&&tmp_val[3]<inf->xmax_a[j*4+1]){
+                         inf->xmin_a[j*4]=tmp_val[2];
+                         inf->xmin_a[j*4+1]=tmp_val[3];
+                        }
+
+			printf("underneath? inf->xmin_a(x,y)=%f,%f\n", inf->xmin_a[j*4],inf->xmin_a[j*4+1]);
 			inf->xmin_a[j*4]=inf->Xmin_const[0];
 			}		
 		
@@ -562,7 +614,7 @@ k=0;
                 }
 
         }
-
+		printf("[x_max0, x_max1, x_min0, x_min1] %f, %f, %f, %f\n", inf->xmax_a[0], inf->xmax_a[1], inf->xmin_a[0], inf->xmin_a[1]);
 //Limit the torque
         for(j=0;j<FMPC_GT;j++){
                 for(k=0;k<4;k++){
